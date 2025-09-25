@@ -48,7 +48,7 @@ func (r *Repository) CreateEvent(ctx context.Context, event *model.Event) (uuid.
 }
 
 // CreateBooking adds a new booking to the database.
-func (r *Repository) CreateBooking(ctx context.Context, userID, eventID uuid.UUID, booking *model.Booking) error {
+func (r *Repository) CreateBooking(ctx context.Context, booking *model.Booking) error {
 	tx, err := r.db.Master.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -62,7 +62,7 @@ func (r *Repository) CreateBooking(ctx context.Context, userID, eventID uuid.UUI
 		WHERE id = $1 AND available_seats > 0;
 	`
 
-	res, err := tx.ExecContext(ctx, updateEventQuery, eventID)
+	res, err := tx.ExecContext(ctx, updateEventQuery, booking.EventID)
 	if err != nil {
 		return fmt.Errorf("failed to update event: %w", err)
 	}
@@ -81,20 +81,43 @@ func (r *Repository) CreateBooking(ctx context.Context, userID, eventID uuid.UUI
 		RETURNING id, status, created_at, updated_at;
 	`
 
-	err = tx.QueryRowContext(ctx, createBookingQuery, eventID, userID, booking.ExpiresAt).
+	err = tx.QueryRowContext(ctx, createBookingQuery, booking.EventID, booking.UserID, booking.ExpiresAt).
 		Scan(&booking.ID, &booking.Status, &booking.CreatedAt, &booking.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to insert booking: %w", err)
 	}
-
-	booking.UserID = userID
-	booking.EventID = eventID
 
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
+}
+
+// GetEventByID retrieves an event by its id.
+func (r *Repository) GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.Event, error) {
+	query := `
+		SELECT id, title, date, total_seats, available_seats, booking_ttl, created_at, updated_at
+		FROM events
+		WHERE id = $1;
+	`
+
+	var event model.Event
+	err := r.db.Master.QueryRowContext(
+		ctx, query, eventID,
+	).Scan(
+		&event.ID, &event.Title, &event.Date, &event.TotalSeats, &event.AvailableSeats,
+		&event.BookingTTL, &event.CreatedAt, &event.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrEventNotFound
+		}
+
+		return nil, fmt.Errorf("failed to query event: %w", err)
+	}
+
+	return &event, nil
 }
 
 // ConfirmBooking sets booking status to confirmed.
@@ -165,28 +188,48 @@ func (r *Repository) CancelBooking(ctx context.Context, bookingID, userID, event
 	return nil
 }
 
-// GetEventByID retrieves an event by its id.
-func (r *Repository) GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.Event, error) {
+// CancelExpiredBookings cancels all expired pending bookings and updates event seats.
+func (r *Repository) CancelExpiredBookings(ctx context.Context) (int64, error) {
+	tx, err := r.db.Master.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Cancel expired bookings and collect event IDs.
 	query := `
-		SELECT id, title, date, total_seats, available_seats, booking_ttl, created_at, updated_at
-		FROM events
-		WHERE id = $1;
+		WITH expired AS (
+			UPDATE bookings
+			SET status = 'cancelled', updated_at = NOW()
+			WHERE status = 'pending' AND expires_at < NOW()
+			RETURNING event_id
+		)
+		UPDATE events
+		SET available_seats = available_seats + 1,
+		    updated_at = NOW()
+		FROM expired
+		WHERE events.id = expired.event_id
+		RETURNING events.id;
 	`
 
-	var event model.Event
-	err := r.db.Master.QueryRowContext(
-		ctx, query, eventID,
-	).Scan(
-		&event.ID, &event.Title, &event.Date, &event.TotalSeats, &event.AvailableSeats,
-		&event.BookingTTL, &event.CreatedAt, &event.UpdatedAt,
-	)
+	rows, err := tx.QueryContext(ctx, query)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrEventNotFound
-		}
+		return 0, fmt.Errorf("failed to update events: %w", err)
+	}
+	defer rows.Close()
 
-		return nil, fmt.Errorf("failed to query event: %w", err)
+	var count int64
+	for rows.Next() {
+		count++
 	}
 
-	return &event, nil
+	if err = rows.Err(); err != nil {
+		return 0, fmt.Errorf("failed to iterate events: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return count, nil
 }
