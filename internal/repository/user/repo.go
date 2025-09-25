@@ -33,7 +33,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *model.User) (uuid.UUI
 	`
 
 	err := r.db.Master.QueryRowContext(
-		ctx, query, user.Email, user.PasswordHash,
+		ctx, query, user.Email, user.Password,
 	).Scan(&user.ID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
@@ -54,7 +54,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*model.U
 	err := r.db.Master.QueryRowContext(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
-		&user.PasswordHash,
+		&user.Password,
 		&user.Name,
 		&user.CreatedAt,
 	)
@@ -69,8 +69,8 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*model.U
 	return &user, nil
 }
 
-// ExistsByEmail checks if a user with the given email already exists in the database.
-func (r *Repository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+// CheckUserExistsByEmail checks if a user with the given email already exists in the database.
+func (r *Repository) CheckUserExistsByEmail(ctx context.Context, email string) (bool, error) {
 	query := `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`
 
 	var exists bool
