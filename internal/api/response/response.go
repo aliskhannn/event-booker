@@ -33,3 +33,9 @@ func Created(c *ginext.Context, result interface{}) {
 func Fail(c *ginext.Context, status int, err error) {
 	JSON(c, status, Error{Message: err.Error()})
 }
+
+// FailAbort sends an error JSON response and aborts the Gin context.
+func FailAbort(c *ginext.Context, status int, err error) {
+	Fail(c, status, err)
+	c.Abort()
+}
