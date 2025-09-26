@@ -22,8 +22,13 @@ var (
 
 // repository defines the interface for user-related data access.
 type repository interface {
+	// CreateUser inserts a new user into the storage and returns its ID.
 	CreateUser(ctx context.Context, user *model.User) (uuid.UUID, error)
+
+	// GetUserByEmail retrieves a user by their email.
 	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
+
+	// CheckUserExistsByEmail checks if a user exists for the given email.
 	CheckUserExistsByEmail(ctx context.Context, email string) (bool, error)
 }
 
