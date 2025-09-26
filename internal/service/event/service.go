@@ -131,7 +131,7 @@ func (s *Service) GetExpiredBookings(ctx context.Context) ([]*model.Booking, err
 
 // CancelBooking cancels a booking (by user or background job).
 func (s *Service) CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
-	err := s.repository.CancelBooking(ctx, bookingID, userID, eventID)
+	err := s.repository.CancelBooking(ctx, userID, eventID, bookingID)
 	if err != nil {
 		return fmt.Errorf("cancel booking: %w", err)
 	}
