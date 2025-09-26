@@ -143,6 +143,32 @@ func (r *Repository) ConfirmBooking(ctx context.Context, userID, eventID, bookin
 	return nil
 }
 
+// GetExpiredBookings retrieves all expired pending bookings.
+func (r *Repository) GetExpiredBookings(ctx context.Context) ([]*model.Booking, error) {
+	query := `
+        SELECT id, event_id, user_id, status, expires_at, created_at, updated_at
+        FROM bookings
+        WHERE expires_at < NOW() AND status = 'pending';
+    `
+
+	rows, err := r.db.Master.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query expired bookings: %w", err)
+	}
+	defer rows.Close()
+
+	var bookings []*model.Booking
+	for rows.Next() {
+		var b model.Booking
+		if err := rows.Scan(&b.ID, &b.EventID, &b.UserID, &b.Status, &b.ExpiresAt, &b.CreatedAt, &b.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan booking: %w", err)
+		}
+		bookings = append(bookings, &b)
+	}
+
+	return bookings, nil
+}
+
 // CancelBooking sets booking status to cancelled.
 func (r *Repository) CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
 	tx, err := r.db.Master.BeginTx(ctx, nil)
@@ -186,50 +212,4 @@ func (r *Repository) CancelBooking(ctx context.Context, userID, eventID, booking
 	}
 
 	return nil
-}
-
-// CancelExpiredBookings cancels all expired pending bookings and updates event seats.
-func (r *Repository) CancelExpiredBookings(ctx context.Context) (int64, error) {
-	tx, err := r.db.Master.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// Cancel expired bookings and collect event IDs.
-	query := `
-		WITH expired AS (
-			UPDATE bookings
-			SET status = 'cancelled', updated_at = NOW()
-			WHERE status = 'pending' AND expires_at < NOW()
-			RETURNING event_id
-		)
-		UPDATE events
-		SET available_seats = available_seats + 1,
-		    updated_at = NOW()
-		FROM expired
-		WHERE events.id = expired.event_id
-		RETURNING events.id;
-	`
-
-	rows, err := tx.QueryContext(ctx, query)
-	if err != nil {
-		return 0, fmt.Errorf("failed to update events: %w", err)
-	}
-	defer rows.Close()
-
-	var count int64
-	for rows.Next() {
-		count++
-	}
-
-	if err = rows.Err(); err != nil {
-		return 0, fmt.Errorf("failed to iterate events: %w", err)
-	}
-
-	if err = tx.Commit(); err != nil {
-		return 0, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return count, nil
 }
