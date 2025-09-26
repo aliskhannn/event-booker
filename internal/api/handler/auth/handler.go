@@ -42,14 +42,14 @@ func NewHandler(s service, v *validator.Validate) *Handler {
 // RegisterRequest represents the JSON request body for user registration.
 type RegisterRequest struct {
 	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,password"`
+	Password string `json:"password" validate:"required"`
 	Name     string `json:"name"`
 }
 
 // LoginRequest represents the JSON request body for user login.
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,password"`
+	Password string `json:"password" validate:"required"`
 }
 
 // Register handles user registration.
