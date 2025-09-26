@@ -31,8 +31,8 @@ type Handler struct {
 	validator *validator.Validate
 }
 
-// New creates a new authentication handler.
-func New(s service, v *validator.Validate) *Handler {
+// NewHandler creates a new authentication handler.
+func NewHandler(s service, v *validator.Validate) *Handler {
 	return &Handler{
 		service:   s,
 		validator: v,

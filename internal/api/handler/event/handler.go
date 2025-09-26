@@ -44,8 +44,8 @@ type Handler struct {
 	validator *validator.Validate
 }
 
-// New creates a new event handler with the provided service and validator.
-func New(s service, v *validator.Validate) *Handler {
+// NewHandler creates a new event handler with the provided service and validator.
+func NewHandler(s service, v *validator.Validate) *Handler {
 	return &Handler{
 		service:   s,
 		validator: v,

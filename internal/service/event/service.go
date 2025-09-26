@@ -36,9 +36,6 @@ type repository interface {
 
 	// GetExpiredBookings retrieves all expired pending bookings.
 	GetExpiredBookings(ctx context.Context) ([]*model.Booking, error)
-
-	// CancelExpiredBookings cancels all expired pending bookings and updates event seats.
-	CancelExpiredBookings(ctx context.Context) (int64, error)
 }
 
 // Service contains business logic for event booking management.
@@ -46,8 +43,8 @@ type Service struct {
 	repository repository
 }
 
-// New creates a new event service with the provided repository.
-func New(r repository) *Service {
+// NewService creates a new event service with the provided repository.
+func NewService(r repository) *Service {
 	return &Service{repository: r}
 }
 

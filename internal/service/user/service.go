@@ -41,8 +41,8 @@ type Service struct {
 	cfg        *config.Config
 }
 
-// New creates a new user service with the provided repository and configuration.
-func New(r repository, cfg *config.Config) *Service {
+// NewService creates a new user service with the provided repository and configuration.
+func NewService(r repository, cfg *config.Config) *Service {
 	return &Service{
 		repository: r,
 		cfg:        cfg,
