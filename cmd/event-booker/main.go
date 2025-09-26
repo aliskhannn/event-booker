@@ -89,7 +89,7 @@ func main() {
 	go jm.StartScheduler()
 
 	// Initialize API router and HTTP server.
-	r := router.New(authHandler, eventHandler)
+	r := router.New(authHandler, eventHandler, cfg)
 	s := server.New(cfg.Server.HTTPPort, r)
 
 	// Start HTTP server in a separate goroutine.

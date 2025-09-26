@@ -5,10 +5,12 @@ import (
 
 	"github.com/aliskhannn/event-booker/internal/api/handler/auth"
 	"github.com/aliskhannn/event-booker/internal/api/handler/event"
+	"github.com/aliskhannn/event-booker/internal/config"
+	"github.com/aliskhannn/event-booker/internal/middleware"
 )
 
 // New creates a new Gin engine and sets up routes for the API.
-func New(authHandler *auth.Handler, eventHandler *event.Handler) *ginext.Engine {
+func New(authHandler *auth.Handler, eventHandler *event.Handler, cfg *config.Config) *ginext.Engine {
 	// Create a new Gin engine using the extended gin wrapper.
 	e := ginext.New()
 
@@ -30,20 +32,17 @@ func New(authHandler *auth.Handler, eventHandler *event.Handler) *ginext.Engine 
 	// --- Event routes ---
 	eventGroup := e.Group("/api/events")
 	{
-		// Create a new event
-		eventGroup.POST("/", eventHandler.CreateEvent)
-
-		// Retrieve a specific event by ID
+		// Public route: anyone can view event details
 		eventGroup.GET("/:eventID", eventHandler.GetEvent)
 
-		// Book a seat for a specific event
-		eventGroup.POST("/:eventID/book", eventHandler.BookEvent)
-
-		// Confirm a specific booking
-		eventGroup.POST("/:eventID/booking/:bookingID/confirm", eventHandler.ConfirmBooking)
-
-		// Cancel a specific booking
-		eventGroup.POST("/:eventID/booking/:bookingID/cancel", eventHandler.CancelBooking)
+		// Protected routes: require auth
+		eventGroup.Use(middleware.Auth(cfg.JWT.Secret, cfg.JWT.TTL))
+		{
+			eventGroup.POST("/", eventHandler.CreateEvent)
+			eventGroup.POST("/:eventID/book", eventHandler.BookEvent)
+			eventGroup.POST("/:eventID/booking/:bookingID/confirm", eventHandler.ConfirmBooking)
+			eventGroup.POST("/:eventID/booking/:bookingID/cancel", eventHandler.CancelBooking)
+		}
 	}
 
 	return e
