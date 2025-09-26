@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/wb-go/wbf/dbpg"
@@ -38,7 +39,12 @@ func (r *Repository) CreateEvent(ctx context.Context, event *model.Event) (uuid.
 	`
 
 	err := r.db.Master.QueryRowContext(
-		ctx, query, event.Title, event.Date, event.TotalSeats, event.AvailableSeats, event.BookingTTL,
+		ctx, query,
+		event.Title,
+		event.Date,
+		event.TotalSeats,
+		event.AvailableSeats,
+		int64(event.BookingTTL.Seconds()),
 	).Scan(&event.ID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create event: %w", err)
@@ -103,11 +109,12 @@ func (r *Repository) GetEventByID(ctx context.Context, eventID uuid.UUID) (*mode
 	`
 
 	var event model.Event
+	var bookingTTLSeconds int64
 	err := r.db.Master.QueryRowContext(
 		ctx, query, eventID,
 	).Scan(
 		&event.ID, &event.Title, &event.Date, &event.TotalSeats, &event.AvailableSeats,
-		&event.BookingTTL, &event.CreatedAt, &event.UpdatedAt,
+		&bookingTTLSeconds, &event.CreatedAt, &event.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -116,6 +123,8 @@ func (r *Repository) GetEventByID(ctx context.Context, eventID uuid.UUID) (*mode
 
 		return nil, fmt.Errorf("failed to query event: %w", err)
 	}
+
+	event.BookingTTL = time.Duration(bookingTTLSeconds) * time.Second
 
 	return &event, nil
 }
