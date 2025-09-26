@@ -23,7 +23,7 @@ type repository interface {
 	CreateEvent(ctx context.Context, event *model.Event) (uuid.UUID, error)
 
 	// CreateBooking adds a new booking to the database.
-	CreateBooking(ctx context.Context, booking *model.Booking) error
+	CreateBooking(ctx context.Context, booking *model.Booking) (uuid.UUID, error)
 
 	// GetEventByID retrieves an event by its id.
 	GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.Event, error)
@@ -73,18 +73,18 @@ func (s *Service) CreateEvent(
 }
 
 // BookEvent reserves seats for a user at an event.
-func (s *Service) BookEvent(ctx context.Context, userID, eventID uuid.UUID) error {
+func (s *Service) BookEvent(ctx context.Context, userID, eventID uuid.UUID) (uuid.UUID, error) {
 	// Load event to check availability and TTL.
 	event, err := s.repository.GetEventByID(ctx, eventID)
 	if err != nil {
 		if errors.Is(err, eventrepo.ErrEventNotFound) {
-			return ErrEventNotFound
+			return uuid.Nil, ErrEventNotFound
 		}
 
-		return fmt.Errorf("get event: %w", err)
+		return uuid.Nil, fmt.Errorf("get event: %w", err)
 	}
 	if event.AvailableSeats <= 0 {
-		return ErrNoSeatsAvailable
+		return uuid.Nil, ErrNoSeatsAvailable
 	}
 
 	booking := &model.Booking{
@@ -93,11 +93,12 @@ func (s *Service) BookEvent(ctx context.Context, userID, eventID uuid.UUID) erro
 		ExpiresAt: time.Now().Add(event.BookingTTL), // calculate expiration time
 	}
 
-	if err := s.repository.CreateBooking(ctx, booking); err != nil {
-		return fmt.Errorf("create booking: %w", err)
+	id, err := s.repository.CreateBooking(ctx, booking)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("create booking: %w", err)
 	}
 
-	return nil
+	return id, nil
 }
 
 // GetEventByID returns event info with available seats.

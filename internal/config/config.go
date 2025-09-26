@@ -76,6 +76,12 @@ func mustBindEnv() {
 		"database.master.name": "DB_NAME",
 
 		"jwt.secret": "JWT_SECRET",
+
+		"email.smtp_host": "SMTP_HOST",
+		"email.smtp_port": "SMTP_PORT",
+		"email.username":  "SMTP_USER",
+		"email.password":  "SMTP_PASS",
+		"email.from":      "SMTP_FROM",
 	}
 
 	for key, env := range bindings {

@@ -26,7 +26,7 @@ type service interface {
 	CreateEvent(ctx context.Context, title string, date time.Time, totalSeats, availableSeats int, bookingTTL time.Duration) (uuid.UUID, error)
 
 	// BookEvent reserves seats for a user at an event.
-	BookEvent(ctx context.Context, userID, eventID uuid.UUID) error
+	BookEvent(ctx context.Context, userID, eventID uuid.UUID) (uuid.UUID, error)
 
 	// GetEventByID returns event info with available seats.
 	GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.Event, error)
@@ -134,7 +134,7 @@ func (h *Handler) BookEvent(c *ginext.Context) {
 	}
 
 	// Book a seat.
-	err = h.service.BookEvent(c.Request.Context(), userID, eventID)
+	id, err := h.service.BookEvent(c.Request.Context(), userID, eventID)
 	if err != nil {
 		// If  event not found, return 404 Not Found.
 		if errors.Is(err, eventservice.ErrEventNotFound) {
@@ -158,6 +158,7 @@ func (h *Handler) BookEvent(c *ginext.Context) {
 
 	// Return success message.
 	response.OK(c, map[string]string{
+		"id":      id.String(),
 		"message": "booking created",
 	})
 }

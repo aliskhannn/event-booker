@@ -54,10 +54,10 @@ func (r *Repository) CreateEvent(ctx context.Context, event *model.Event) (uuid.
 }
 
 // CreateBooking adds a new booking to the database.
-func (r *Repository) CreateBooking(ctx context.Context, booking *model.Booking) error {
+func (r *Repository) CreateBooking(ctx context.Context, booking *model.Booking) (uuid.UUID, error) {
 	tx, err := r.db.Master.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -70,34 +70,34 @@ func (r *Repository) CreateBooking(ctx context.Context, booking *model.Booking) 
 
 	res, err := tx.ExecContext(ctx, updateEventQuery, booking.EventID)
 	if err != nil {
-		return fmt.Errorf("failed to update event: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to update event: %w", err)
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to check rows affected: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to check rows affected: %w", err)
 	}
 	if rows == 0 {
-		return ErrNoSeatsAvailable
+		return uuid.Nil, ErrNoSeatsAvailable
 	}
 
 	createBookingQuery := `
 		INSERT INTO bookings (event_id, user_id, expires_at)
 		VALUES ($1, $2, $3)
-		RETURNING id, status, created_at, updated_at;
+		RETURNING id, status, created_at, updated_at
 	`
 
 	err = tx.QueryRowContext(ctx, createBookingQuery, booking.EventID, booking.UserID, booking.ExpiresAt).
 		Scan(&booking.ID, &booking.Status, &booking.CreatedAt, &booking.UpdatedAt)
 	if err != nil {
-		return fmt.Errorf("failed to insert booking: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to insert booking: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return nil
+	return booking.ID, nil
 }
 
 // GetEventByID retrieves an event by its id.
