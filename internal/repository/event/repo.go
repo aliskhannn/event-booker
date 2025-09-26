@@ -121,7 +121,7 @@ func (r *Repository) GetEventByID(ctx context.Context, eventID uuid.UUID) (*mode
 }
 
 // ConfirmBooking sets booking status to confirmed.
-func (r *Repository) ConfirmBooking(ctx context.Context, bookingID, userID, eventID uuid.UUID) error {
+func (r *Repository) ConfirmBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
 	query := `
 		UPDATE bookings
 		SET status = 'confirmed',
@@ -144,7 +144,7 @@ func (r *Repository) ConfirmBooking(ctx context.Context, bookingID, userID, even
 }
 
 // CancelBooking sets booking status to cancelled.
-func (r *Repository) CancelBooking(ctx context.Context, bookingID, userID, eventID uuid.UUID) error {
+func (r *Repository) CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
 	tx, err := r.db.Master.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)

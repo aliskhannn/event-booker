@@ -9,19 +9,32 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/aliskhannn/event-booker/internal/model"
+	eventrepo "github.com/aliskhannn/event-booker/internal/repository/event"
 )
 
 var (
 	ErrNoSeatsAvailable = errors.New("no seats available")
+	ErrEventNotFound    = errors.New("event not found")
 )
 
 // repository defines the interface for event booking-related data access.
 type repository interface {
+	// CreateEvent adds a new event to the database.
 	CreateEvent(ctx context.Context, event *model.Event) (uuid.UUID, error)
+
+	// CreateBooking adds a new booking to the database.
 	CreateBooking(ctx context.Context, booking *model.Booking) error
+
+	// GetEventByID retrieves an event by its id.
 	GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.Event, error)
-	ConfirmBooking(ctx context.Context, bookingID, userID, eventID uuid.UUID) error
-	CancelBooking(ctx context.Context, bookingID, userID, eventID uuid.UUID) error
+
+	// ConfirmBooking sets booking status to confirmed.
+	ConfirmBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error
+
+	// CancelBooking sets booking status to cancelled.
+	CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error
+
+	// CancelExpiredBookings cancels all expired pending bookings and updates event seats.
 	CancelExpiredBookings(ctx context.Context) (int64, error)
 }
 
@@ -64,6 +77,10 @@ func (s *Service) BookEvent(ctx context.Context, userID, eventID uuid.UUID) erro
 	// Load event to check availability and TTL.
 	event, err := s.repository.GetEventByID(ctx, eventID)
 	if err != nil {
+		if errors.Is(err, eventrepo.ErrEventNotFound) {
+			return ErrEventNotFound
+		}
+
 		return fmt.Errorf("get event: %w", err)
 	}
 	if event.AvailableSeats <= 0 {
@@ -94,7 +111,7 @@ func (s *Service) GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.E
 }
 
 // ConfirmBookingPayment confirms the payment of a booking.
-func (s *Service) ConfirmBookingPayment(ctx context.Context, bookingID, userID, eventID uuid.UUID) error {
+func (s *Service) ConfirmBookingPayment(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
 	err := s.repository.ConfirmBooking(ctx, bookingID, userID, eventID)
 	if err != nil {
 		return fmt.Errorf("confirm booking payment: %w", err)
@@ -104,7 +121,7 @@ func (s *Service) ConfirmBookingPayment(ctx context.Context, bookingID, userID, 
 }
 
 // CancelBooking cancels a booking (by user or background job).
-func (s *Service) CancelBooking(ctx context.Context, bookingID, userID, eventID uuid.UUID) error {
+func (s *Service) CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
 	err := s.repository.CancelBooking(ctx, bookingID, userID, eventID)
 	if err != nil {
 		return fmt.Errorf("cancel booking: %w", err)
