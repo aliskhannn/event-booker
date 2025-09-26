@@ -1,5 +1,18 @@
 services:
-  notifier:
+  event-booker-ui:
+    build:
+      context: ./web
+    container_name: event-booker-ui
+    ports:
+      - "3000:80"   # http://localhost:3000
+    environment:
+      - VITE_API_URL=http://notifier:8080
+    depends_on:
+      - event-booker
+    networks:
+      - app-network
+
+  event-booker:
     build: ./
     command: ./event-booker
     container_name: event-booker
