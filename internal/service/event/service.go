@@ -29,10 +29,10 @@ type repository interface {
 	GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.Event, error)
 
 	// ConfirmBooking sets booking status to confirmed.
-	ConfirmBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error
+	ConfirmBooking(ctx context.Context, bookingID uuid.UUID) error
 
 	// CancelBooking sets booking status to cancelled.
-	CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error
+	CancelBooking(ctx context.Context, bookingID uuid.UUID) error
 
 	// CancelExpiredBooking sets the status of an expired booking to 'cancelled'.
 	CancelExpiredBooking(ctx context.Context, bookingID uuid.UUID) error
@@ -116,8 +116,8 @@ func (s *Service) GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.E
 }
 
 // ConfirmBookingPayment confirms the payment of a booking.
-func (s *Service) ConfirmBookingPayment(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
-	err := s.repository.ConfirmBooking(ctx, userID, eventID, bookingID)
+func (s *Service) ConfirmBookingPayment(ctx context.Context, bookingID uuid.UUID) error {
+	err := s.repository.ConfirmBooking(ctx, bookingID)
 	if err != nil {
 		return fmt.Errorf("confirm booking payment: %w", err)
 	}
@@ -135,8 +135,8 @@ func (s *Service) GetExpiredBookings(ctx context.Context) ([]*model.Booking, err
 }
 
 // CancelBooking cancels a booking (by user).
-func (s *Service) CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
-	err := s.repository.CancelBooking(ctx, userID, eventID, bookingID)
+func (s *Service) CancelBooking(ctx context.Context, bookingID uuid.UUID) error {
+	err := s.repository.CancelBooking(ctx, bookingID)
 	if err != nil {
 		return fmt.Errorf("cancel booking: %w", err)
 	}

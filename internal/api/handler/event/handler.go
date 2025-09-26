@@ -32,10 +32,10 @@ type service interface {
 	GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.Event, error)
 
 	// ConfirmBookingPayment confirms the payment of a booking.
-	ConfirmBookingPayment(ctx context.Context, userID, eventID, bookingID uuid.UUID) error
+	ConfirmBookingPayment(ctx context.Context, bookingID uuid.UUID) error
 
 	// CancelBooking cancels a booking (by user or background job).
-	CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error
+	CancelBooking(ctx context.Context, bookingID uuid.UUID) error
 }
 
 // Handler provides HTTP endpoints for event management and bookings.
@@ -199,20 +199,6 @@ func (h *Handler) GetEvent(c *ginext.Context) {
 // It validates user authorization, event ID, and booking ID,
 // then calls the service to confirm the booking payment.
 func (h *Handler) ConfirmBooking(c *ginext.Context) {
-	userID, err := getUserID(c)
-	if err != nil {
-		zlog.Logger.Error().Err(err).Msg("unauthorized")
-		response.Fail(c, http.StatusUnauthorized, err)
-		return
-	}
-
-	eventID, err := parseUUIDParam(c, "eventID")
-	if err != nil {
-		zlog.Logger.Error().Err(err).Msg("missing or invalid event id")
-		response.Fail(c, http.StatusBadRequest, err)
-		return
-	}
-
 	bookingID, err := parseUUIDParam(c, "bookingID")
 	if err != nil {
 		zlog.Logger.Error().Err(err).Msg("missing or invalid event id")
@@ -221,7 +207,7 @@ func (h *Handler) ConfirmBooking(c *ginext.Context) {
 	}
 
 	// Confirm booking payment.
-	err = h.service.ConfirmBookingPayment(c.Request.Context(), userID, eventID, bookingID)
+	err = h.service.ConfirmBookingPayment(c.Request.Context(), bookingID)
 	if err != nil {
 		// If booking not found or already confirmed, return 404 Not Found.
 		if errors.Is(err, eventrepo.ErrBookingNotFoundOrAlreadyConfirmed) {
@@ -246,20 +232,6 @@ func (h *Handler) ConfirmBooking(c *ginext.Context) {
 // It validates user authorization, event ID, and booking ID,
 // then calls the service to cancel the booking.
 func (h *Handler) CancelBooking(c *ginext.Context) {
-	userID, err := getUserID(c)
-	if err != nil {
-		zlog.Logger.Error().Err(err).Msg("unauthorized")
-		response.Fail(c, http.StatusUnauthorized, err)
-		return
-	}
-
-	eventID, err := parseUUIDParam(c, "eventID")
-	if err != nil {
-		zlog.Logger.Error().Err(err).Msg("missing or invalid event id")
-		response.Fail(c, http.StatusBadRequest, err)
-		return
-	}
-
 	bookingID, err := parseUUIDParam(c, "bookingID")
 	if err != nil {
 		zlog.Logger.Error().Err(err).Msg("missing or invalid event id")
@@ -268,7 +240,7 @@ func (h *Handler) CancelBooking(c *ginext.Context) {
 	}
 
 	// Cancel booking.
-	err = h.service.CancelBooking(c.Request.Context(), userID, eventID, bookingID)
+	err = h.service.CancelBooking(c.Request.Context(), bookingID)
 	if err != nil {
 		// If booking not found or already cancelled, return 404 Not Found.
 		if errors.Is(err, eventrepo.ErrBookingNotFoundOrAlreadyCancelled) {

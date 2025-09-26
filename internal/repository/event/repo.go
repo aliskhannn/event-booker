@@ -130,17 +130,17 @@ func (r *Repository) GetEventByID(ctx context.Context, eventID uuid.UUID) (*mode
 }
 
 // ConfirmBooking sets booking status to confirmed.
-func (r *Repository) ConfirmBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
+func (r *Repository) ConfirmBooking(ctx context.Context, bookingID uuid.UUID) error {
 	query := `
 		UPDATE bookings
 		SET status = 'confirmed',
 		    updated_at = NOW()
-		WHERE id = $1 AND event_id = $2 AND user_id = $3 AND status = 'pending'
+		WHERE id = $1 AND status = 'pending'
 		RETURNING id;
 	`
 
 	var id uuid.UUID
-	err := r.db.Master.QueryRowContext(ctx, query, bookingID, eventID, userID).Scan(&id)
+	err := r.db.Master.QueryRowContext(ctx, query, bookingID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrBookingNotFoundOrAlreadyConfirmed
@@ -179,7 +179,7 @@ func (r *Repository) GetExpiredBookings(ctx context.Context) ([]*model.Booking, 
 }
 
 // CancelBooking cancels a booking by a user.
-func (r *Repository) CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
+func (r *Repository) CancelBooking(ctx context.Context, bookingID uuid.UUID) error {
 	tx, err := r.db.Master.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -190,12 +190,12 @@ func (r *Repository) CancelBooking(ctx context.Context, userID, eventID, booking
 		UPDATE bookings
 		SET status = 'cancelled',
 		    updated_at = NOW()
-		WHERE id = $1 AND event_id = $2 AND user_id = $3 AND status = 'pending'
-		RETURNING id;
+		WHERE id = $1 AND status = 'pending'
+		RETURNING event_id;
     `
 
-	var id uuid.UUID
-	err = tx.QueryRowContext(ctx, cancelQuery, bookingID, eventID, userID).Scan(&id)
+	var eventID uuid.UUID
+	err = tx.QueryRowContext(ctx, cancelQuery, bookingID).Scan(&eventID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrBookingNotFoundOrAlreadyCancelled
