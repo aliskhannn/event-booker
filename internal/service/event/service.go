@@ -113,7 +113,7 @@ func (s *Service) GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.E
 
 // ConfirmBookingPayment confirms the payment of a booking.
 func (s *Service) ConfirmBookingPayment(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
-	err := s.repository.ConfirmBooking(ctx, bookingID, userID, eventID)
+	err := s.repository.ConfirmBooking(ctx, userID, eventID, bookingID)
 	if err != nil {
 		return fmt.Errorf("confirm booking payment: %w", err)
 	}
