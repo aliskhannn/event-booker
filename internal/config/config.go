@@ -12,7 +12,8 @@ import (
 type Config struct {
 	Server   Server   `mapstructure:"server"`
 	Database Database `mapstructure:"database"`
-	JWT      JWT      `yaml:"jwt"`
+	JWT      JWT      `mapstructure:"jwt"`
+	Email    Email    `mapstructure:"email"`
 }
 
 // Server holds HTTP server-related configuration.
@@ -46,6 +47,15 @@ type JWT struct {
 	TTL    time.Duration `mapstructure:"ttl"`
 }
 
+// Email holds SMTP configuration for sending emails.
+type Email struct {
+	SMTPHost string `mapstructure:"smtp_host"`
+	SMTPPort string `mapstructure:"smtp_port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	From     string `mapstructure:"from"`
+}
+
 // DSN returns the PostgreSQL DSN string for connecting to this database node.
 func (n DatabaseNode) DSN() string {
 	return fmt.Sprintf(
@@ -75,10 +85,10 @@ func mustBindEnv() {
 	}
 }
 
-// Must loads and validates the configuration from file and environment variables.
+// MustLoad loads and validates the configuration from file and environment variables.
 //
 // It panics if configuration cannot be read or unmarshalled.
-func Must() *Config {
+func MustLoad() *Config {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./config")

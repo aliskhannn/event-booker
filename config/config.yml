@@ -19,3 +19,10 @@ database:
 jwt:
   secret: "very-long-secret"
   ttl: "24h"
+
+email:
+  smtp_host: "smtp.mailtrap.io"
+  smtp_port: "587"
+  username: "smtp_user"
+  password: "smtp_pass"
+  from: "example@example.com"
