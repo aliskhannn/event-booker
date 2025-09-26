@@ -25,6 +25,9 @@ type repository interface {
 	// CreateUser inserts a new user into the storage and returns its ID.
 	CreateUser(ctx context.Context, user *model.User) (uuid.UUID, error)
 
+	// GetUserByID retrieves a user by id.
+	GetUserByID(ctx context.Context, userID uuid.UUID) (*model.User, error)
+
 	// GetUserByEmail retrieves a user by their email.
 	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
 
@@ -102,6 +105,15 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 	}
 
 	return token, nil
+}
+
+// GetUserByID returns user info.
+func (s *Service) GetUserByID(ctx context.Context, userID uuid.UUID) (*model.User, error) {
+	user, err := s.repository.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get user by id: %w", err)
+	}
+	return user, nil
 }
 
 // hashPassword generates a bcrypt hash for the given password.

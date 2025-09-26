@@ -42,6 +42,26 @@ func (r *Repository) CreateUser(ctx context.Context, user *model.User) (uuid.UUI
 	return user.ID, nil
 }
 
+// GetUserByID retrieves a user by id.
+func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*model.User, error) {
+	query := `
+        SELECT id, email, name, created_at
+        FROM users
+        WHERE id = $1
+    `
+	var u model.User
+	err := r.db.Master.QueryRowContext(ctx, query, userID).Scan(
+		&u.ID, &u.Email, &u.Name, &u.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("query user by id: %w", err)
+	}
+	return &u, nil
+}
+
 // GetUserByEmail retrieves a user by email.
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	query := `
