@@ -34,6 +34,9 @@ type repository interface {
 	// CancelBooking sets booking status to cancelled.
 	CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error
 
+	// CancelExpiredBooking sets the status of an expired booking to 'cancelled'.
+	CancelExpiredBooking(ctx context.Context, bookingID uuid.UUID) error
+
 	// GetExpiredBookings retrieves all expired pending bookings.
 	GetExpiredBookings(ctx context.Context) ([]*model.Booking, error)
 }
@@ -90,6 +93,7 @@ func (s *Service) BookEvent(ctx context.Context, userID, eventID uuid.UUID) (uui
 	booking := &model.Booking{
 		EventID:   eventID,
 		UserID:    userID,
+		Status:    "pending",
 		ExpiresAt: time.Now().Add(event.BookingTTL), // calculate expiration time
 	}
 
@@ -130,9 +134,19 @@ func (s *Service) GetExpiredBookings(ctx context.Context) ([]*model.Booking, err
 	return bookings, nil
 }
 
-// CancelBooking cancels a booking (by user or background job).
+// CancelBooking cancels a booking (by user).
 func (s *Service) CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
 	err := s.repository.CancelBooking(ctx, userID, eventID, bookingID)
+	if err != nil {
+		return fmt.Errorf("cancel booking: %w", err)
+	}
+
+	return nil
+}
+
+// CancelExpiredBooking cancels a booking (background job).
+func (s *Service) CancelExpiredBooking(ctx context.Context, bookingID uuid.UUID) error {
+	err := s.repository.CancelExpiredBooking(ctx, bookingID)
 	if err != nil {
 		return fmt.Errorf("cancel booking: %w", err)
 	}

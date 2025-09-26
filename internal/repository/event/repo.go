@@ -178,7 +178,7 @@ func (r *Repository) GetExpiredBookings(ctx context.Context) ([]*model.Booking, 
 	return bookings, nil
 }
 
-// CancelBooking sets booking status to cancelled.
+// CancelBooking cancels a booking by a user.
 func (r *Repository) CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error {
 	tx, err := r.db.Master.BeginTx(ctx, nil)
 	if err != nil {
@@ -190,12 +190,55 @@ func (r *Repository) CancelBooking(ctx context.Context, userID, eventID, booking
 		UPDATE bookings
 		SET status = 'cancelled',
 		    updated_at = NOW()
-		WHERE id = $1 AND event_id = $2 AND user_id = $3 AND status = 'pending' AND expires_at < NOW()
+		WHERE id = $1 AND event_id = $2 AND user_id = $3 AND status = 'pending'
 		RETURNING id;
     `
 
 	var id uuid.UUID
 	err = tx.QueryRowContext(ctx, cancelQuery, bookingID, eventID, userID).Scan(&id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrBookingNotFoundOrAlreadyCancelled
+		}
+		return fmt.Errorf("failed to cancel booking: %w", err)
+	}
+
+	updateEventQuery := `
+ 		UPDATE events
+		SET available_seats = available_seats + 1,
+		    updated_at = NOW()
+ 		WHERE id = $1;
+	`
+	_, err = tx.ExecContext(ctx, updateEventQuery, eventID)
+	if err != nil {
+		return fmt.Errorf("failed to update event seats: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// CancelExpiredBooking sets the status of an expired booking to 'cancelled'.
+func (r *Repository) CancelExpiredBooking(ctx context.Context, bookingID uuid.UUID) error {
+	tx, err := r.db.Master.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	cancelQuery := `
+		UPDATE bookings
+		SET status = 'cancelled',
+		    updated_at = NOW()
+		WHERE id = $1 AND status = 'pending' AND expires_at < NOW()
+		RETURNING event_id;
+    `
+
+	var eventID uuid.UUID
+	err = tx.QueryRowContext(ctx, cancelQuery, bookingID).Scan(&eventID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrBookingNotFoundOrAlreadyCancelled

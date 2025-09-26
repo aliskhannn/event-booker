@@ -25,8 +25,8 @@ type eventService interface {
 	// GetExpiredBookings returns all expired bookings (background job).
 	GetExpiredBookings(ctx context.Context) ([]*model.Booking, error)
 
-	// CancelBooking cancels a booking (by user or background job).
-	CancelBooking(ctx context.Context, userID, eventID, bookingID uuid.UUID) error
+	// CancelExpiredBooking cancels a booking (background job).
+	CancelExpiredBooking(ctx context.Context, bookingID uuid.UUID) error
 }
 
 // notifier defines an interface for sending notifications through a channel.
@@ -77,7 +77,7 @@ func (j *CancelExpiredBookingsJob) Run(ctx context.Context) error {
 
 	for _, b := range booking {
 		// Cancel booking.
-		if err := j.eventService.CancelBooking(ctx, b.UserID, b.EventID, b.ID); err != nil {
+		if err := j.eventService.CancelExpiredBooking(ctx, b.ID); err != nil {
 			zlog.Logger.Printf("failed to cancel booking %s: %v", b.ID, err)
 			continue
 		}
