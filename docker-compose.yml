@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:80"   # http://localhost:3000
     environment:
-      - VITE_API_URL=http://notifier:8080
+      - VITE_API_URL=http://event-booker:8080/api
     depends_on:
       - event-booker
     networks:

@@ -20,8 +20,8 @@ const EventDetail: React.FC = () => {
       try {
         const data = await getEvent(eventID);
         setEvent(data);
-      } catch (err) {
-        setError("Failed to load event");
+      } catch (err: any) {
+        setError(err.response?.data?.error || "Failed to load event");
       }
     };
     fetchEvent();
@@ -39,41 +39,49 @@ const EventDetail: React.FC = () => {
     if (!eventID) return;
     try {
       const response = await bookEvent(eventID);
-      setBooking(response.booking);
-      setMessage("Booked successfully");
+      setBooking({
+        id: response.result.id,
+        event_id: eventID,
+        user_id: "", // You may need to fetch user_id separately
+        status: "pending",
+        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // Placeholder
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      setMessage(response.result.message);
       // Refresh event
       const updatedEvent = await getEvent(eventID);
       setEvent(updatedEvent);
-    } catch (err) {
-      setError("Failed to book");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to book");
     }
   };
 
   const handleConfirm = async () => {
     if (!eventID || !booking?.id) return;
     try {
-      await confirmBooking(eventID, booking.id);
-      setMessage("Confirmed successfully");
+      const response = await confirmBooking(eventID, booking.id);
+      setMessage(response.result.message);
       setBooking(null); // Or update status
       // Refresh event
       const updatedEvent = await getEvent(eventID);
       setEvent(updatedEvent);
-    } catch (err) {
-      setError("Failed to confirm");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to confirm");
     }
   };
 
   const handleCancel = async () => {
     if (!eventID || !booking?.id) return;
     try {
-      await cancelBooking(eventID, booking.id);
-      setMessage("Canceled successfully");
+      const response = await cancelBooking(eventID, booking.id);
+      setMessage(response.result.message);
       setBooking(null);
       // Refresh event
       const updatedEvent = await getEvent(eventID);
       setEvent(updatedEvent);
-    } catch (err) {
-      setError("Failed to cancel");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to cancel");
     }
   };
 

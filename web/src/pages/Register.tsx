@@ -17,11 +17,11 @@ const Register: React.FC = () => {
     try {
       const response = await register({ email, password, name });
       if (authContext) {
-        authContext.login(response.token);
+        authContext.login(response.result.token); // Access token from result
       }
       navigate("/");
-    } catch (err) {
-      setError("Registration failed");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Registration failed");
     }
   };
 

@@ -1,7 +1,8 @@
 // src/api.ts
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8080/api";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -29,7 +30,7 @@ export interface LoginRequest {
 
 export interface CreateEventRequest {
   title: string;
-  date: string; // ISO string or backend format
+  date: string; // ISO string
   total_seats: number;
   available_seats: number;
   booking_ttl: string; // e.g., "10m"
@@ -38,10 +39,10 @@ export interface CreateEventRequest {
 export interface Event {
   id: string; // uuid as string
   title: string;
-  date: string; // time.Time as string
+  date: string;
   total_seats: number;
   available_seats: number;
-  booking_ttl: string; // time.Duration as string
+  booking_ttl: string;
   created_at: string;
   updated_at: string;
 }
@@ -56,19 +57,42 @@ export interface Booking {
   updated_at: string;
 }
 
-// Assuming backend returns { token: string } on login/register
+// Backend wraps responses in { result: {...} }
 export interface AuthResponse {
-  token: string;
+  result: {
+    token: string;
+  };
 }
 
-// Assuming book returns the booking
 export interface BookResponse {
-  booking: Booking;
+  result: {
+    id: string;
+    message: string;
+  };
 }
 
-// Assuming confirm/cancel return success or something
 export interface ActionResponse {
-  message: string;
+  result: {
+    message: string;
+  };
+}
+
+export interface EventsResponse {
+  result: {
+    events: Event[];
+  };
+}
+
+export interface EventResponse {
+  result: {
+    event: Event;
+  };
+}
+
+export interface CreateEventResponse {
+  result: {
+    id: string;
+  };
 }
 
 // Auth
@@ -85,25 +109,25 @@ export const login = async (data: LoginRequest): Promise<AuthResponse> => {
 };
 
 // Events
-// Note: Assuming GET /events exists for listing, as required by TZ for viewing list.
-// If not, backend needs to add it. For now, implement as if it does, returning Event[]
 export const getEvents = async (): Promise<Event[]> => {
-  const response = await api.get("/events");
-  return response.data;
+  const response = await api.get<EventsResponse>("/events");
+  return response.data.result.events || [];
 };
 
 export const getEvent = async (eventID: string): Promise<Event> => {
-  const response = await api.get(`/events/${eventID}`);
-  return response.data;
+  const response = await api.get<EventResponse>(`/events/${eventID}`);
+  return response.data.result.event;
 };
 
-export const createEvent = async (data: CreateEventRequest): Promise<Event> => {
-  const response = await api.post("/events", data);
-  return response.data;
+export const createEvent = async (
+  data: CreateEventRequest
+): Promise<{ id: string }> => {
+  const response = await api.post<CreateEventResponse>("/events", data);
+  return response.data.result;
 };
 
 export const bookEvent = async (eventID: string): Promise<BookResponse> => {
-  const response = await api.post(`/events/${eventID}/book`);
+  const response = await api.post<BookResponse>(`/events/${eventID}/book`);
   return response.data;
 };
 
@@ -111,7 +135,7 @@ export const confirmBooking = async (
   eventID: string,
   bookingID: string
 ): Promise<ActionResponse> => {
-  const response = await api.post(
+  const response = await api.post<ActionResponse>(
     `/events/${eventID}/booking/${bookingID}/confirm`
   );
   return response.data;
@@ -121,7 +145,7 @@ export const cancelBooking = async (
   eventID: string,
   bookingID: string
 ): Promise<ActionResponse> => {
-  const response = await api.post(
+  const response = await api.post<ActionResponse>(
     `/events/${eventID}/booking/${bookingID}/cancel`
   );
   return response.data;

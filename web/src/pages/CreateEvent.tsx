@@ -22,16 +22,23 @@ const CreateEvent: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Format date to full RFC3339 (e.g., "2025-09-27T10:27:00Z")
+      let formattedDate = "";
+      if (date) {
+        const dateObj = new Date(date);
+        dateObj.setSeconds(0, 0); // Ensure seconds are set
+        formattedDate = dateObj.toISOString();
+      }
       const event = await createEvent({
         title,
-        date, // Assume backend parses string
+        date: formattedDate,
         total_seats: totalSeats,
         available_seats: availableSeats,
         booking_ttl: bookingTTL,
       });
       navigate(`/events/${event.id}`);
-    } catch (err) {
-      setError("Failed to create event");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to create event");
     }
   };
 
@@ -57,14 +64,14 @@ const CreateEvent: React.FC = () => {
           type="number"
           placeholder="Total Seats"
           value={totalSeats}
-          onChange={(e) => setTotalSeats(parseInt(e.target.value))}
+          onChange={(e) => setTotalSeats(parseInt(e.target.value) || 0)}
           className="w-full mb-4 p-2 border rounded"
         />
         <input
           type="number"
           placeholder="Available Seats"
           value={availableSeats}
-          onChange={(e) => setAvailableSeats(parseInt(e.target.value))}
+          onChange={(e) => setAvailableSeats(parseInt(e.target.value) || 0)}
           className="w-full mb-4 p-2 border rounded"
         />
         <input

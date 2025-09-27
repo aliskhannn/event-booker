@@ -16,11 +16,11 @@ const Login: React.FC = () => {
     try {
       const response = await login({ email, password });
       if (authContext) {
-        authContext.login(response.token);
+        authContext.login(response.result.token); // Access token from result
       }
       navigate("/");
-    } catch (err) {
-      setError("Login failed");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Login failed");
     }
   };
 
