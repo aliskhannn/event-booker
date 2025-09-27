@@ -25,6 +25,9 @@ type repository interface {
 	// CreateBooking adds a new booking to the database.
 	CreateBooking(ctx context.Context, booking *model.Booking) (uuid.UUID, error)
 
+	// GetAllEvents retrieves all events from the database.
+	GetAllEvents(ctx context.Context) ([]*model.Event, error)
+
 	// GetEventByID retrieves an event by its id.
 	GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.Event, error)
 
@@ -103,6 +106,15 @@ func (s *Service) BookEvent(ctx context.Context, userID, eventID uuid.UUID) (uui
 	}
 
 	return id, nil
+}
+
+// GetEvents retrieves all events.
+func (s *Service) GetEvents(ctx context.Context) ([]*model.Event, error) {
+	events, err := s.repository.GetAllEvents(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list events: %w", err)
+	}
+	return events, nil
 }
 
 // GetEventByID returns event info with available seats.

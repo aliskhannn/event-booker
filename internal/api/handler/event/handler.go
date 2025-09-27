@@ -28,6 +28,9 @@ type service interface {
 	// BookEvent reserves seats for a user at an event.
 	BookEvent(ctx context.Context, userID, eventID uuid.UUID) (uuid.UUID, error)
 
+	// GetEvents retrieves all events.
+	GetEvents(ctx context.Context) ([]*model.Event, error)
+
 	// GetEventByID returns event info with available seats.
 	GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.Event, error)
 
@@ -160,6 +163,22 @@ func (h *Handler) BookEvent(c *ginext.Context) {
 	response.OK(c, map[string]string{
 		"id":      id.String(),
 		"message": "booking created",
+	})
+}
+
+// ListEvents handles GET /events to list all events.
+func (h *Handler) GetEvents(c *ginext.Context) {
+	events, err := h.service.GetEvents(c.Request.Context())
+	if err != nil {
+		// Internal Server Error.
+		zlog.Logger.Error().Err(err).Msg("failed to get events")
+		response.Fail(c, http.StatusInternalServerError, fmt.Errorf("internal server error"))
+		return
+	}
+
+	// Return event info.
+	response.OK(c, map[string][]*model.Event{
+		"events": events,
 	})
 }
 

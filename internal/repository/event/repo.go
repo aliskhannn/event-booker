@@ -100,6 +100,47 @@ func (r *Repository) CreateBooking(ctx context.Context, booking *model.Booking) 
 	return booking.ID, nil
 }
 
+// GetAllEvents retrieves all events from the database.
+func (r *Repository) GetAllEvents(ctx context.Context) ([]*model.Event, error) {
+	query := `
+		SELECT id, title, date, total_seats, available_seats, booking_ttl, created_at, updated_at
+		FROM events;
+	`
+
+	rows, err := r.db.Master.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query events: %w", err)
+	}
+	defer rows.Close()
+
+	var events []*model.Event
+	for rows.Next() {
+		var e model.Event
+		var bookingTTLSeconds int64
+		err := rows.Scan(
+			&e.ID,
+			&e.Title,
+			&e.Date,
+			&e.TotalSeats,
+			&e.AvailableSeats,
+			&bookingTTLSeconds,
+			&e.CreatedAt,
+			&e.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan event: %w", err)
+		}
+		e.BookingTTL = time.Duration(bookingTTLSeconds) * time.Second
+		events = append(events, &e)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
+	return events, nil
+}
+
 // GetEventByID retrieves an event by its id.
 func (r *Repository) GetEventByID(ctx context.Context, eventID uuid.UUID) (*model.Event, error) {
 	query := `
