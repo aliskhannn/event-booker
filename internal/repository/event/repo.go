@@ -38,7 +38,7 @@ func (r *Repository) CreateEvent(ctx context.Context, event *model.Event) (uuid.
 		RETURNING id;
 	`
 
-	err := r.db.Master.QueryRowContext(
+	err := r.db.QueryRowContext(
 		ctx, query,
 		event.Title,
 		event.Date,
@@ -107,7 +107,7 @@ func (r *Repository) GetAllEvents(ctx context.Context) ([]*model.Event, error) {
 		FROM events;
 	`
 
-	rows, err := r.db.Master.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query events: %w", err)
 	}
@@ -151,7 +151,7 @@ func (r *Repository) GetEventByID(ctx context.Context, eventID uuid.UUID) (*mode
 
 	var event model.Event
 	var bookingTTLSeconds int64
-	err := r.db.Master.QueryRowContext(
+	err := r.db.QueryRowContext(
 		ctx, query, eventID,
 	).Scan(
 		&event.ID, &event.Title, &event.Date, &event.TotalSeats, &event.AvailableSeats,
@@ -181,7 +181,7 @@ func (r *Repository) ConfirmBooking(ctx context.Context, bookingID uuid.UUID) er
 	`
 
 	var id uuid.UUID
-	err := r.db.Master.QueryRowContext(ctx, query, bookingID).Scan(&id)
+	err := r.db.QueryRowContext(ctx, query, bookingID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrBookingNotFoundOrAlreadyConfirmed
@@ -201,7 +201,7 @@ func (r *Repository) GetExpiredBookings(ctx context.Context) ([]*model.Booking, 
         WHERE expires_at < NOW() AND status = 'pending';
     `
 
-	rows, err := r.db.Master.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("query expired bookings: %w", err)
 	}

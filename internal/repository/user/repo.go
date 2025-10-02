@@ -32,7 +32,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *model.User) (uuid.UUI
 		RETURNING id;
 	`
 
-	err := r.db.Master.QueryRowContext(
+	err := r.db.QueryRowContext(
 		ctx, query, user.Email, user.Password, user.Name,
 	).Scan(&user.ID)
 	if err != nil {
@@ -50,7 +50,7 @@ func (r *Repository) GetUserByID(ctx context.Context, userID uuid.UUID) (*model.
         WHERE id = $1
     `
 	var u model.User
-	err := r.db.Master.QueryRowContext(ctx, query, userID).Scan(
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
 		&u.ID, &u.Email, &u.Name, &u.CreatedAt,
 	)
 	if err != nil {
@@ -71,7 +71,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*model.U
 	`
 
 	var user model.User
-	err := r.db.Master.QueryRowContext(ctx, query, email).Scan(
+	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Password,
@@ -94,7 +94,7 @@ func (r *Repository) CheckUserExistsByEmail(ctx context.Context, email string) (
 	query := `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`
 
 	var exists bool
-	err := r.db.Master.QueryRowContext(ctx, query, email).Scan(&exists)
+	err := r.db.QueryRowContext(ctx, query, email).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("failed to check if user exists: %w", err)
 	}
